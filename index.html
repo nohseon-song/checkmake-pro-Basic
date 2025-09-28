@@ -1,83 +1,64 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0d6efd">
   <title>CheckMake PRO-Basic</title>
 
-  <!-- iOS 홈 아이콘 -->
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon-basic.png" />
-  <!-- Android 파비콘(권장) -->
-  <link rel="icon" sizes="192x192" href="./icons/app-icon-192-basic.png" />
-  <link rel="icon" sizes="256x256" href="./icons/app-icon-256-basic.png" />
-  <link rel="icon" sizes="512x512" href="./icons/app-icon-512-basic.png" />
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon-basic.png">
+  <link rel="icon" sizes="192x192" href="./icons/app-icon-192-basic.png">
+  <link rel="icon" sizes="512x512" href="./icons/app-icon-512-basic.png">
 
-  <!-- PWA Manifest (버전 파라미터로 강제 갱신) -->
-  <link rel="manifest" href="./manifest.json?v=1.0.0" />
-  <meta name="theme-color" content="#0d6efd" />
-
-  <!-- (선택) 깔끔한 기본 스타일 -->
   <style>
-    :root { --brand:#0d6efd; --fg:#0b1324; --muted:#6b7280; }
-    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif; color:var(--fg); }
-    .wrap { min-height:100dvh; display:grid; place-items:center; padding:24px; }
-    .card { width:min(720px,92vw); border:1px solid #e5e7eb; border-radius:16px; padding:24px 24px 32px; box-shadow:0 6px 24px rgba(0,0,0,.06); }
-    .title { display:flex; align-items:center; gap:12px; margin:0 0 4px; }
-    .title img { width:36px; height:36px; }
-    .subtitle { margin:0 0 16px; color:var(--muted); font-size:14px; }
-    .btn { appearance:none; border:0; padding:12px 16px; border-radius:10px; background:var(--brand); color:#fff; font-weight:700; cursor:pointer; }
-    .btn:disabled { opacity:.5; cursor:not-allowed; }
-    .hint { margin-top:12px; font-size:13px; color:var(--muted); }
-    .right { text-align:right; }
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,'Noto Sans KR',Segoe UI,Roboto,sans-serif;background:#fff}
+    .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px}
+    .card{max-width:760px;width:100%;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.08);padding:28px 24px;border:1px solid #f0f0f0}
+    .row{display:flex;gap:16px;align-items:center}
+    .logo{width:64px;height:64px;border-radius:12px}
+    h1{margin:6px 0 8px;font-size:36px;letter-spacing:-.5px}
+    p{margin:0 0 4px;color:#555;line-height:1.6}
+    .btn{margin-top:18px;display:inline-block;background:#0d6efd;color:#fff;border:0;border-radius:10px;padding:12px 18px;font-weight:700;font-size:16px;cursor:pointer}
+    .btn:active{transform:translateY(1px)}
+    .hint{margin-top:10px;color:#777;font-size:14px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <h1 class="title">
-        <img src="./icons/app-icon-192-basic.png" alt="icon" />
-        CheckMake PRO-Basic
-      </h1>
-      <p class="subtitle">Professional-Engineering Insight By SNS</p>
-
-      <div class="right"><button id="installBtn" class="btn" hidden>앱 설치</button></div>
-      <p class="hint">홈 화면에 추가하면 전체화면 모드와 예쁜 아이콘으로 실행됩니다.</p>
+      <div class="row">
+        <img class="logo" src="./icons/app-icon-192-basic.png" alt="">
+        <div>
+          <h1>CheckMake PRO-Basic</h1>
+          <p>Professional-Engineering Insight By SNS</p>
+          <p class="hint">홈 화면에 추가하면 전체화면 모드와 예쁜 아이콘으로 실행됩니다.</p>
+          <button id="openBtn" class="btn">앱 열기</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
-    // SW 등록(필수)
-    (function registerSW(){
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js?bv=1.0.0').catch(console.error);
-      }
-    })();
+    // ★ 여기를 PRO-Basic의 Google Apps Script /exec 로 바꿔주세요
+    const APP_URL = "https://script.google.com/macros/s/<<<PRO_BASIC_EXEC_URL>>>/exec";
 
-    // 사용자 친화 설치 버튼(크롬/안드로이드)
-    let deferredPrompt;
-    const installBtn = document.getElementById('installBtn');
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      installBtn.hidden = false;
-    });
-
-    installBtn.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      installBtn.disabled = true;
-      await deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-      deferredPrompt = null;
-      installBtn.hidden = true;
-    });
-
-    // iOS 안내(사파리: 공유 → 홈 화면에 추가)
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    if (isIOS && !isStandalone) {
-      document.querySelector('.hint').textContent = 'iOS: Safari에서 공유 아이콘 → "홈 화면에 추가"를 눌러 설치하세요.';
+    // SW 등록 (scope는 루트)
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").catch(console.warn);
     }
+
+    // 홈화면(standalone)으로 실행되면 자동 진입
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    if (isStandalone) {
+      setTimeout(() => location.replace(APP_URL), 300);
+    }
+
+    // 브라우저로 볼 때는 버튼으로 진입
+    document.getElementById("openBtn").addEventListener("click", () => {
+      location.href = APP_URL; // 세션 유지 필요하면 replace 대신 href 유지
+    });
   </script>
 </body>
 </html>
