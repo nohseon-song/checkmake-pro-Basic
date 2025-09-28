@@ -1,7 +1,7 @@
 {
   "name": "CheckMake PRO-Basic",
   "short_name": "CM PRO-Basic",
-  "start_url": "./",
+  "start_url": "./?autolaunch=1",     // ← 여기!
   "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
