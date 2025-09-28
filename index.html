@@ -5,32 +5,48 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>CheckMake PRO-Basic</title>
 
-  <!-- PWA -->
-  <link rel="manifest" href="./manifest.json?v=1">
+  <link rel="manifest" href="./manifest.json?v=2">
   <meta name="theme-color" content="#0d6efd">
-
-  <!-- 아이콘 (iOS + Favicon 계열) -->
   <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon-basic.png">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/app-icon-192-basic.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="./icons/app-icon-512-basic.png>
+  <link rel="icon" type="image/png" sizes="512x512" href="./icons/app-icon-512-basic.png">
 
   <style>
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif;background:#fff}
-    .wrap{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}
-    .card{max-width:720px;width:100%;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.08);padding:28px}
-    .app-row{display:flex;gap:16px;align-items:center;margin-bottom:8px}
-    .logo{width:40px;height:40px;border-radius:10px}
+    :root{
+      --primary:#0d6efd; --bg:#ffffff; --text:#0f172a; --muted:#64748b;
+      --btn-grad:linear-gradient(135deg,#0d6efd 0%,#3b82f6 100%);
+      --shadow:0 10px 30px rgba(13,110,253,.25);
+    }
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif}
+    .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px}
+    .card{max-width:760px;width:100%;border-radius:18px;box-shadow:0 12px 36px rgba(0,0,0,.08);padding:28px}
+    .row{display:flex;gap:16px;align-items:center;margin-bottom:14px}
+    .logo{width:44px;height:44px;border-radius:10px}
     h1{margin:.2rem 0 0;font-size:2.2rem;line-height:1.2}
-    .sub{color:#4b5563;margin:10px 0 20px}
-    .hint{color:#6b7280;margin-top:10px}
-    .cta{margin-top:20px}
-    .btn{appearance:none;border:0;border-radius:10px;padding:14px 22px;font-weight:700;background:#0d6efd;color:#fff;cursor:pointer}
+    .sub{color:var(--muted);margin:10px 0 18px}
+    .hint{color:var(--muted)}
+    .cta{margin-top:22px;display:flex;gap:12px;align-items:center}
+    .btn{
+      appearance:none;border:0;border-radius:12px;padding:14px 22px;
+      font-weight:800;letter-spacing:.3px;color:#fff;background:var(--btn-grad);
+      box-shadow:var(--shadow);cursor:pointer;transition:transform .06s ease;
+    }
+    .btn:active{transform:translateY(1px)}
+    .ghost{background:#eef2ff;color:#1e40af}
+    .spinner{
+      width:22px;height:22px;border-radius:50%;
+      border:3px solid rgba(13,110,253,.25);border-top-color:#0d6efd;
+      animation:spin 1s linear infinite;display:none;
+    }
+    .spin-show .spinner{display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <div class="app-row">
+      <div class="row">
         <img src="./icons/app-icon-192-basic.png" class="logo" alt="app icon">
         <div>
           <h1>CheckMake PRO-Basic</h1>
@@ -40,23 +56,56 @@
 
       <p class="hint">홈 화면에 추가하면 전체화면 모드와 예쁜 아이콘으로 실행됩니다.</p>
 
-      <div class="cta">
+      <div class="cta" id="cta">
         <button id="openAppBtn" class="btn">앱 열기</button>
+        <div class="spinner" aria-hidden="true"></div>
+        <button id="retryBtn" class="btn ghost" style="display:none">다시 시도</button>
       </div>
     </div>
   </div>
 
   <script>
-    // ① 여기를 네 "PRO-Basic" Apps Script /exec URL 로 바꿔 넣어 주세요.
-    // 예) const APP_URL = "https://script.google.com/macros/s/AKfyc.../exec";
+    // ① 이 값을 네 PRO-Basic Apps Script /exec URL 로 바꿔주세요.
     const APP_URL = "https://script.google.com/macros/s/AKfycbzqztdLghQX5HRnqGmVyPcgZNqQw3hINjW3YxZpACzO7XOTaY1nJonFBUTq9bnhuKjTzg/exec";
 
-    document.getElementById('openAppBtn').addEventListener('click', () => {
-      // 새 탭에서 열기(앱 내 WebView에서 막히는 경우 최소화)
-      window.open(APP_URL, '_blank', 'noopener,noreferrer');
-    });
+    // —— 자동 실행 규칙 ——
+    //  A. 홈화면(standalone)에서 열렸거나
+    //  B. URL에 ?autolaunch=1 이 있으면
+    //  → 딜레이 후 자동으로 APP_URL로 이동
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
 
-    // SW 등록 (HTTPS/GitHub Pages에서만 동작)
+    const params = new URL(location.href).searchParams;
+    const shouldAuto = isStandalone || params.get('autolaunch') === '1';
+
+    const cta = document.getElementById('cta');
+    const spinnerOn = (on) => cta.classList.toggle('spin-show', !!on);
+
+    function goNow() {
+      // PWA/홈화면에서는 현재 탭 전환이 자연스러움
+      // (history를 남기지 않게 replace 사용)
+      spinnerOn(true);
+      try { location.replace(APP_URL); }
+      catch { window.location.href = APP_URL; }
+    }
+
+    // 자동 이동 시도 (약간의 딜레이로 UI 깜빡임 최소화)
+    if (shouldAuto) {
+      spinnerOn(true);
+      setTimeout(goNow, 450);
+      // 일부 브라우저가 막는 경우 대비: 1.5초 후 재시도 버튼 노출
+      setTimeout(() => {
+        spinnerOn(false);
+        document.getElementById('retryBtn').style.display = 'inline-block';
+      }, 1500);
+    }
+
+    // 수동 버튼들
+    document.getElementById('openAppBtn').addEventListener('click', goNow);
+    document.getElementById('retryBtn').addEventListener('click', goNow);
+
+    // 서비스워커 등록(선택 사항)
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').catch(()=>{});
