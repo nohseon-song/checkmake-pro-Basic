@@ -5,17 +5,22 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>CheckMake PRO-Basic</title>
 
-  <link rel="manifest" href="./manifest.json?v=2">
+  <!-- GitHub Pages BASE 경로(리포 이름) -->
+  <script>window.__BASE__ = "/checkmake-pro-Basic/";</script>
+
+  <!-- Manifest & Icons (동적 주입) -->
+  <link rel="manifest" id="mf">
   <meta name="theme-color" content="#0d6efd">
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon-basic.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="./icons/app-icon-192-basic.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="./icons/app-icon-512-basic.png">
+  <!-- iOS 전용 -->
+  <link rel="apple-touch-icon" sizes="180x180" id="apple180">
+  <!-- Favicon들 -->
+  <link rel="icon" type="image/png" sizes="192x192" id="ico192">
+  <link rel="icon" type="image/png" sizes="512x512" id="ico512">
 
   <style>
     :root{
       --primary:#0d6efd; --bg:#ffffff; --text:#0f172a; --muted:#64748b;
-      --btn-grad:linear-gradient(135deg,#0d6efd 0%,#3b82f6 100%);
-      --shadow:0 10px 30px rgba(13,110,253,.25);
+      --btn-grad:linear-gradient(135deg,#0d6efd 0%,#3b82f6 100%); --shadow:0 10px 30px rgba(13,110,253,.25);
     }
     html,body{height:100%}
     body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif}
@@ -25,21 +30,15 @@
     .logo{width:44px;height:44px;border-radius:10px}
     h1{margin:.2rem 0 0;font-size:2.2rem;line-height:1.2}
     .sub{color:var(--muted);margin:10px 0 18px}
-    .hint{color:var(--muted)}
-    .cta{margin-top:22px;display:flex;gap:12px;align-items:center}
-    .btn{
-      appearance:none;border:0;border-radius:12px;padding:14px 22px;
-      font-weight:800;letter-spacing:.3px;color:#fff;background:var(--btn-grad);
-      box-shadow:var(--shadow);cursor:pointer;transition:transform .06s ease;
-    }
-    .btn:active{transform:translateY(1px)}
+    .hint{color:var(--muted);margin-top:6px}
+    .cta{margin-top:22px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .btn{appearance:none;border:0;border-radius:12px;padding:14px 22px;font-weight:800;letter-spacing:.3px;cursor:pointer;transition:transform .06s ease}
+    .primary{color:#fff;background:var(--btn-grad);box-shadow:var(--shadow)}
     .ghost{background:#eef2ff;color:#1e40af}
-    .spinner{
-      width:22px;height:22px;border-radius:50%;
-      border:3px solid rgba(13,110,253,.25);border-top-color:#0d6efd;
-      animation:spin 1s linear infinite;display:none;
-    }
+    .btn:active{transform:translateY(1px)}
+    .spinner{width:22px;height:22px;border-radius:50%;border:3px solid rgba(13,110,253,.25);border-top-color:#0d6efd;animation:spin 1s linear infinite;display:none}
     .spin-show .spinner{display:inline-block}
+    .err{color:#b91c1c;font-size:.9rem;display:none}
     @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
@@ -47,7 +46,7 @@
   <div class="wrap">
     <div class="card">
       <div class="row">
-        <img src="./icons/app-icon-192-basic.png" class="logo" alt="app icon">
+        <img id="logo" class="logo" alt="app icon">
         <div>
           <h1>CheckMake PRO-Basic</h1>
           <div class="sub">Professional-Engineering Insight By SNS</div>
@@ -55,60 +54,96 @@
       </div>
 
       <div class="cta" id="cta">
-        <button id="openAppBtn" class="btn">앱 열기</button>
+        <button id="installBtn" class="btn primary" style="display:none">홈 화면에 추가 / 앱 설치</button>
+        <button id="openAppBtn" class="btn ghost">앱 열기</button>
         <div class="spinner" aria-hidden="true"></div>
         <button id="retryBtn" class="btn ghost" style="display:none">다시 시도</button>
       </div>
+      <div id="err" class="err"></div>
     </div>
   </div>
 
   <script>
-    // ① 이 값을 네 PRO-Basic Apps Script /exec URL 로 바꿔주세요.
-    const APP_URL = "https://script.google.com/macros/s/AKfycbzqztdLghQX5HRnqGmVyPcgZNqQw3hINjW3YxZpACzO7XOTaY1nJonFBUTq9bnhuKjTzg/exec";
+    // ── 경로 주입 ───────────────────────────────────────────────────────────────
+    const BASE = window.__BASE__;
+    document.getElementById('mf').href       = `${BASE}manifest.json`;
+    document.getElementById('apple180').href = `${BASE}icons/apple-touch-icon-basic.png`;
+    document.getElementById('ico192').href   = `${BASE}icons/app-icon-192-basic.png`;
+    document.getElementById('ico512').href   = `${BASE}icons/app-icon-512-basic.png`;
+    document.getElementById('logo').src      = `${BASE}icons/app-icon-192-basic.png`;
 
-    // —— 자동 실행 규칙 ——
-    //  A. 홈화면(standalone)에서 열렸거나
-    //  B. URL에 ?autolaunch=1 이 있으면
-    //  → 딜레이 후 자동으로 APP_URL로 이동
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      window.navigator.standalone === true;
+    // ── 원본 앱 URL (네 파일 그대로 유지) ─────────────────────────────────────
+    const APP_URL = "https://script.google.com/macros/s/AKfycbzqztdLghQX5HRnqGmVyPcgZNqQw3hINjW3YxZpACzO7XOTaY1nJonFBUTq9bnhuKjTzg/exec"; // :contentReference[oaicite:6]{index=6}
 
-    const params = new URL(location.href).searchParams;
-    const shouldAuto = isStandalone || params.get('autolaunch') === '1';
+    // ── Service Worker 등록 ────────────────────────────────────────────────────
+    let swReady = Promise.resolve();
+    if ('serviceWorker' in navigator) {
+      swReady = navigator.serviceWorker.register(`${BASE}sw.js`).catch(()=>{});
+    }
 
+    // ── 설치 버튼 (beforeinstallprompt) ────────────────────────────────────────
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('installBtn').style.display = 'inline-block';
+      console.log('[PWA] beforeinstallprompt fired');
+    });
+
+    document.getElementById('installBtn').addEventListener('click', async () => {
+      if (!deferredPrompt) { alert("설치를 지원하지 않거나 이미 설치됨."); return; }
+      await deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      console.log('[PWA] userChoice:', choice);
+      deferredPrompt = null;
+    });
+
+    // ── 앱 열기(원본으로 이동) ────────────────────────────────────────────────
     const cta = document.getElementById('cta');
     const spinnerOn = (on) => cta.classList.toggle('spin-show', !!on);
 
     function goNow() {
-      // PWA/홈화면에서는 현재 탭 전환이 자연스러움
-      // (history를 남기지 않게 replace 사용)
       spinnerOn(true);
       try { location.replace(APP_URL); }
-      catch { window.location.href = APP_URL; }
+      catch { location.href = APP_URL; }
     }
 
-    // 자동 이동 시도 (약간의 딜레이로 UI 깜빡임 최소화)
+    // 자동 실행 규칙 유지(standalone 또는 ?autolaunch=1)  :contentReference[oaicite:7]{index=7}
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const params = new URL(location.href).searchParams;
+    const shouldAuto = isStandalone || params.get('autolaunch') === '1';
+
     if (shouldAuto) {
       spinnerOn(true);
       setTimeout(goNow, 450);
-      // 일부 브라우저가 막는 경우 대비: 1.5초 후 재시도 버튼 노출
-      setTimeout(() => {
-        spinnerOn(false);
-        document.getElementById('retryBtn').style.display = 'inline-block';
-      }, 1500);
+      setTimeout(() => { spinnerOn(false); document.getElementById('retryBtn').style.display='inline-block'; }, 1500);
     }
 
-    // 수동 버튼들
     document.getElementById('openAppBtn').addEventListener('click', goNow);
     document.getElementById('retryBtn').addEventListener('click', goNow);
 
-    // 서비스워커 등록(선택 사항)
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(()=>{});
-      });
+    // PWA 모드로 이미 열려있으면 바로 이동
+    if (isStandalone) { location.replace(APP_URL); }
+
+    // ── 헬스체크(경로 오류 즉시 표시) ─────────────────────────────────────────
+    async function healthCheck(){
+      const err = document.getElementById('err');
+      const items = [
+        ['manifest', `${BASE}manifest.json`],
+        ['sw',       `${BASE}sw.js`],
+        ['icon192',  `${BASE}icons/app-icon-192-basic.png`],
+        ['icon256',  `${BASE}icons/app-icon-256-basic.png`],
+        ['icon512',  `${BASE}icons/app-icon-512-basic.png`],
+        ['apple180', `${BASE}icons/apple-touch-icon-basic.png`],
+      ];
+      const fails = [];
+      for (const [name, url] of items) {
+        try { const r = await fetch(url, {method:'HEAD',cache:'no-store'}); if (!r.ok) fails.push(`${name}:${r.status}`); }
+        catch { fails.push(`${name}:fetch error`); }
+      }
+      if (fails.length){ err.style.display='block'; err.textContent="리소스 경로 오류: "+fails.join(" | ") + `  (BASE='${BASE}')`; }
     }
+    healthCheck();
   </script>
 </body>
 </html>
